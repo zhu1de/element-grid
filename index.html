@@ -179,8 +179,18 @@
   .piece-slot.used { opacity: 0.3; }
   .rotate-hint { display: none; }
   .piece-grid { display: grid; gap: 3px; }
-  .piece-cell { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: grab; transition: transform 0.1s; border: 1px solid rgba(255,255,255,0.1); }
+  .piece-cell { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: grab; transition: transform 0.1s; border: 1px solid rgba(255,255,255,0.1); position: relative; }
   .piece-cell:active { cursor: grabbing; transform: scale(0.95); }
+  /* 扩大点击区域1.5倍 */
+  .piece-cell::before {
+    content: '';
+    position: absolute;
+    top: -25%;
+    left: -25%;
+    right: -25%;
+    bottom: -25%;
+    z-index: -1;  /* 负z-index不拦截事件 */
+  }
   .piece-cell[data-type="block"] { background: linear-gradient(135deg, #4a4a6a, #3a3a5a); border-color: #5a5a7a; }
   .piece-cell[data-special="penetrate"] { 
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.3), rgba(78, 205, 196, 0.1)) !important; 
@@ -194,6 +204,45 @@
   }
   .piece-cell.empty { background: transparent; cursor: default; }
   #shop-box { background: #1a1a2e; border: 2px solid #2a2a4a; border-radius: 12px; padding: 12px; font-size: 12px; }
+  
+  /* 快捷道具栏 */
+  #quick-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 8px;
+    background: #1a1a2e;
+    border: 2px solid #2a2a4a;
+    border-radius: 12px;
+  }
+  .quick-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #0f0f1a;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 48px;
+  }
+  .quick-btn:hover {
+    background: #2a2a4a;
+    transform: scale(1.05);
+  }
+  .quick-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .quick-btn.can-buy {
+    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    color: #000;
+  }
+  .quick-btn.cant-buy {
+    background: #333;
+    color: #666;
+  }
   
   /* 移动端适配 */
   @media (max-width: 768px) {
@@ -217,11 +266,20 @@
     #right-panel { 
       min-width: auto; 
       width: 100%;
-      flex-direction: row;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
       gap: 8px;
     }
-    #shop-box { flex: 1; max-width: 200px; }
+    #quick-actions {
+      width: 100%;
+      max-width: 320px;
+      justify-content: space-around;
+    }
+    .quick-btn {
+      padding: 10px 14px;
+      font-size: 16px;
+      min-width: 56px;
+    }
     
     #grid {
       grid-template-columns: repeat(8, 40px);
@@ -247,6 +305,17 @@
       width: 16px !important;
       height: 16px !important;
       border: none !important;
+      position: relative;
+    }
+    /* 移动端也扩大点击区域1.5倍 */
+    .piece-slot .piece-cell::before {
+      content: '';
+      position: absolute;
+      top: -25%;
+      left: -25%;
+      right: -25%;
+      bottom: -25%;
+      z-index: -1;  /* 负z-index不拦截事件 */
     }
     .piece-slot .piece-cell[data-type="block"] {
       border: none !important;
@@ -262,18 +331,7 @@
     touch-action: none;
   }
   
-  /* 长按旋转提示 */
-  .touch-device .piece-slot::after {
-    content: "长按旋转";
-    position: absolute;
-    bottom: 2px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10px;
-    color: #666;
-    opacity: 0.7;
-    pointer-events: none;
-  }
+  /* 移动端方块槽 */
   .touch-device .piece-slot {
     position: relative;
   }
@@ -373,36 +431,20 @@
     <div id="pieces-box">
       <span class="label">备选方块（点击旋转）</span>
       <div id="pieces-container">
-        <div class="piece-slot" id="slot-0"><span class="rotate-hint">点击旋转</span></div>
-        <div class="piece-slot" id="slot-1"><span class="rotate-hint">点击旋转</span></div>
-        <div class="piece-slot" id="slot-2"><span class="rotate-hint">点击旋转</span></div>
+        <div class="piece-slot" id="slot-0"></div>
+        <div class="piece-slot" id="slot-1"></div>
+        <div class="piece-slot" id="slot-2"></div>
       </div>
     </div>
   </div>
   
   <div id="right-panel">
-    <div id="shop-box">
-      <div class="label">道具商店 💰</div>
-      <div class="shop-item">
-        <span>⏱️ +30秒</span>
-        <button id="btn-time" onclick="buyItem('time')">30</button>
-      </div>
-      <div class="shop-item">
-        <span>🔄 刷新方块</span>
-        <button id="btn-refresh" onclick="buyItem('refresh')">20</button>
-      </div>
-      <div class="shop-item">
-        <span>💣 消除一行</span>
-        <button id="btn-bomb" onclick="buyItem('bomb')">50</button>
-      </div>
-    </div>
-    <div id="reward-hint">
-      <span class="label">连击奖励(3秒内)</span>
-      <div class="reward-row"><span>1行</span><span>+10分 +2💰</span></div>
-      <div class="reward-row"><span>2行</span><span class="highlight">+40分 +10💰</span></div>
-      <div class="reward-row"><span>3行</span><span class="highlight">+100分 +25💰</span></div>
-      <div class="reward-row"><span>4行</span><span class="highlight">+250分 +50💰</span></div>
-      <div class="reward-row"><span>5行+</span><span class="highlight">+500分 +100💰/组</span></div>
+    <!-- 快捷道具栏 -->
+    <div id="quick-actions">
+      <button class="quick-btn" id="quick-sound" onclick="toggleSound()" title="音效">🔊</button>
+      <button class="quick-btn" id="btn-time" onclick="buyItem('time')" title="+30秒">⏱️30</button>
+      <button class="quick-btn" id="btn-refresh" onclick="buyItem('refresh')" title="刷新">🔄20</button>
+      <button class="quick-btn" id="btn-bomb" onclick="buyItem('bomb')" title="消除一行">💣50</button>
     </div>
     <div id="best-display">最高分：<span id="best-score">0</span></div>
     <div id="combo-box" style="display:none;">
@@ -649,7 +691,10 @@ const AudioSys = {
 // 切换音效开关
 function toggleSound() {
   const enabled = AudioSys.toggle();
-  document.getElementById('sound-toggle').textContent = enabled ? '🔊' : '🔇';
+  const soundBtn = document.getElementById('quick-sound');
+  if (soundBtn) {
+    soundBtn.textContent = enabled ? '🔊' : '🔇';
+  }
   showMsg(enabled ? '音效已开启' : '音效已关闭');
 }
 
@@ -686,7 +731,7 @@ let dragPieceIndex = -1, dragOriginPR = 0, dragOriginPC = 0;
 // 连击机制
 let comboLines = 0;        // 连击中累计消除行数
 let comboTimer = null;     // 连击倒计时
-const COMBO_WINDOW = 3000; // 3秒连击窗口
+const COMBO_WINDOW = 4000; // 4秒连击窗口
 
 function initGame() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
@@ -797,14 +842,21 @@ function updateShopButtons() {
   ];
   items.forEach(item => {
     const btn = document.getElementById(item.id);
+    if (!btn) return;
     if (coins >= item.cost) {
-      btn.className = 'can-buy';
+      btn.className = 'quick-btn can-buy';
       btn.disabled = false;
     } else {
-      btn.className = 'cant-buy';
+      btn.className = 'quick-btn cant-buy';
       btn.disabled = true;
     }
   });
+  
+  // 更新音效按钮状态
+  const soundBtn = document.getElementById('quick-sound');
+  if (soundBtn) {
+    soundBtn.textContent = AudioSys.enabled ? '🔊' : '🔇';
+  }
 }
 
 function generatePiece() {
@@ -1207,18 +1259,17 @@ function addToCombo(lines) {
 function finishCombo() {
   if (comboLines === 0) return;
   
-  // 根据总行数结算奖励
-  const scoreTable = { 1: 10, 2: 40, 3: 100, 4: 250 };
-  const coinTable = { 1: 2, 2: 10, 3: 25, 4: 50 };
+  // 根据总行数结算奖励 - 温和递增设计，平衡稳健型和冒险型玩家
+  const scoreTable = { 1: 10, 2: 40, 3: 100, 4: 250, 5: 500, 6: 650, 7: 850, 8: 1100, 9: 1400, 10: 1750 };
+  const coinTable = { 1: 2, 2: 10, 3: 25, 4: 50, 5: 100, 6: 130, 7: 170, 8: 220, 9: 280, 10: 350 };
   
   let lineScore, lineCoins, comboText = '';
   
   if (comboLines >= 5) {
-    // 5行+大奖
-    const multiplier = Math.floor(comboLines / 5);
-    lineScore = 500 * multiplier;
-    lineCoins = 100 * multiplier;
-    comboText = `🔥${comboLines}行连击！x${multiplier}`;
+    // 5行+大奖，温和递增（5行50倍，6行+30%，之后递减增幅）
+    lineScore = scoreTable[comboLines] || (1750 + (comboLines - 10) * 200);
+    lineCoins = coinTable[comboLines] || (350 + (comboLines - 10) * 40);
+    comboText = `🔥${comboLines}行连击！`;
   } else {
     lineScore = scoreTable[comboLines] || comboLines * 30;
     lineCoins = coinTable[comboLines] || comboLines * 15;
@@ -1269,9 +1320,10 @@ initGame();
   let touchDragOriginPC = 0;
   let dragClone = null;
   let touchStartPos = { x: 0, y: 0 };
+  let touchStartTime = 0;
   let isDragging = false;
-  let longPressTimer = null;  // 长按定时器
-  let hasRotated = false;      // 标记是否已经旋转过（防止旋转后继续拖拽）
+  const CLICK_THRESHOLD = 200;  // 点击判定阈值：200ms
+  const MOVE_THRESHOLD = 10;    // 移动判定阈值：10px
   
   // 为备选方块容器添加触摸事件委托
   const piecesContainer = document.getElementById('pieces-container');
@@ -1295,30 +1347,8 @@ initGame();
     touchDragOriginPR = parseInt(cell.dataset.pr) || 0;
     touchDragOriginPC = parseInt(cell.dataset.pc) || 0;
     touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchStartTime = Date.now();
     isDragging = false;
-    hasRotated = false;
-    
-    // 清除之前可能存在的定时器
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-    
-    // 启动长按定时器 - 400ms后旋转（稍微快一点）
-    longPressTimer = setTimeout(() => {
-      if (touchDragPieceIndex >= 0 && !isDragging && !hasRotated) {
-        // 添加视觉反馈
-        const slot = document.getElementById(`slot-${touchDragPieceIndex}`);
-        if (slot) {
-          slot.classList.add('pressing');
-          setTimeout(() => slot.classList.remove('pressing'), 500);
-        }
-        rotatePieceAt(touchDragPieceIndex);
-        hasRotated = true;
-        // 旋转后震动反馈（如果支持）
-        if (navigator.vibrate) navigator.vibrate(50);
-      }
-    }, 400);
   }
   
   function handleTouchMove(e) {
@@ -1328,17 +1358,8 @@ initGame();
     const dx = touch.clientX - touchStartPos.x;
     const dy = touch.clientY - touchStartPos.y;
     
-    // 移动超过10px时，取消长按定时器
-    if (!isDragging && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
-      if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
-      // 如果已经旋转过了，就不再拖拽
-      if (hasRotated) {
-        touchDragPieceIndex = -1;
-        return;
-      }
+    // 移动超过阈值时，立即进入拖动模式
+    if (!isDragging && (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD)) {
       isDragging = true;
       startDragClone(touchDragPieceIndex, touch.clientX, touch.clientY);
     }
@@ -1351,24 +1372,12 @@ initGame();
   }
   
   function handleTouchEnd(e) {
-    // 清除长按定时器
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-    
     if (touchDragPieceIndex < 0) return;
     
-    // 如果已经旋转过，直接清理状态
-    if (hasRotated) {
-      touchDragPieceIndex = -1;
-      isDragging = false;
-      hasRotated = false;
-      return;
-    }
+    const touchDuration = Date.now() - touchStartTime;
     
     if (isDragging && dragClone) {
-      // 找到触摸结束位置的格子
+      // 拖动模式：放置方块
       const touch = e.changedTouches[0];
       const target = document.elementFromPoint(touch.clientX, touch.clientY);
       const cell = target?.closest('.cell');
@@ -1378,13 +1387,16 @@ initGame();
         const c = parseInt(cell.dataset.c);
         performTouchDrop(touchDragPieceIndex, r, c);
       }
+    } else if (touchDuration < CLICK_THRESHOLD) {
+      // 点击模式：旋转方块（时间短且未进入拖动）
+      rotatePieceAt(touchDragPieceIndex);
+      if (navigator.vibrate) navigator.vibrate(30);
     }
     
     endDragClone();
     clearDropPreview();
     touchDragPieceIndex = -1;
     isDragging = false;
-    hasRotated = false;
   }
   
   function startDragClone(pieceIndex, x, y) {
